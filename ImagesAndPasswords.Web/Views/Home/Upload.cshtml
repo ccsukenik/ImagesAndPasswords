@@ -3,7 +3,7 @@
 *@
 @{
 }
-@model UploadViewModel
+@model ImagesAndPasswords.Data.Image
 
 <div class="row">
     <div class="col-md-8 offset-md-2 jumbotron">
@@ -12,9 +12,9 @@
             here's the link to share with your friends:
 
             <br /><br />
-            <a href="https://localhost:44342/home/enterpassword?id=@Model.ID">
-                Click Here To See Image
-            </a>
+                  <a href="https://localhost:44350/home/viewimage?id=@Model.ID">
+                      https://localhost:44350/home/viewimage?id=@Model.ID
+                  </a>
             <br /><br />
 
             Make sure to give them the password of "@Model.Password"

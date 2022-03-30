@@ -25,82 +25,92 @@ namespace ImagesAndPasswords.Web.Controllers
             _webHostEnvironment = webHostEnvironment;
         }
 
-        private readonly string ImageIdsSessionName = "ImageIdsAndPswd";
-
         public IActionResult Index()
         {
             return View();
         }
 
         [HttpPost]
-        public IActionResult Upload(IFormFile imageFile, string password)
+        public IActionResult Upload(IFormFile imageFile, Image image)
         {
-            string fileName = $"{Guid.NewGuid()}-{imageFile.FileName}";
-
+            string fileName = $"{Guid.NewGuid()}{Path.GetExtension(imageFile.FileName)}";
             string filePath = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", fileName);
             using var fs = new FileStream(filePath, FileMode.CreateNew);
             imageFile.CopyTo(fs);
-
+            image.FileName = fileName;
             var repo = new ImagesRepository(_connectionString);
-            var id = repo.AddImage(fileName, password);
+            repo.AddImage(image);
 
-            var vm = new UploadViewModel
-            {
-                ID = id,
-                Password = password
-            };
-
-            return View(vm);
-        }
-
-        public IActionResult EnterPassword(int id)
-        {
-            var imageIds = HttpContext.Session.Get<List<int>>(ImageIdsSessionName);
-            if (imageIds != null && imageIds.Contains(id))
-            {
-                return Redirect($"/home/viewimage?id={id}");
-            }
-
-            var vm = new PasswordViewModel { ID = id, InvalidPassword = (string)TempData["InvalidPassword"] };
-            return View(vm);
+            return View(image);
         }
 
         public IActionResult ViewImage(int id)
         {
-            var imageIds = HttpContext.Session.Get<List<int>>(ImageIdsSessionName);
-            if(imageIds == null || !imageIds.Contains(id))
+            var vm = new ViewImageViewModel();
+            if (TempData["message"] != null)
             {
-                return Redirect($"home/enterpassword?id={id}");
-            }
-            var repo = new ImagesRepository(_connectionString);
-            var image = repo.GetImage(id);
-            repo.UpdateView(id);
-            var vm = new ImageViewModel { Image = image };
-            return View(vm);
-        }
-
-        public IActionResult AddImage(int id, string password)
-        {
-            var repo = new ImagesRepository(_connectionString);
-            string invalidPassword = repo.GetPassword(id);
-            var imageIds = HttpContext.Session.Get<List<int>>(ImageIdsSessionName);
-            if (imageIds == null)
-            {
-                imageIds = new List<int>();
+                vm.Message = (string)TempData["message"];
             }
 
-            if (password == invalidPassword)
+            if (!hasPermissionToView(id))
             {
-                imageIds.Add(id);
-                HttpContext.Session.Set(ImageIdsSessionName, imageIds);
-                return Redirect($"/home/viewimage?id={id}");
+                vm.HasPermissionToView = false;
+                vm.Image = new Image { ID = id };
             }
 
             else
             {
-                TempData["invalidPassword"] = "Invalid Password! Please try again!";
-                return Redirect($"/home/enterpassword?id={id}");
+                vm.HasPermissionToView = true;
+                var repo = new ImagesRepository(_connectionString);
+                repo.UpdateViews(id);
+                var image = repo.GetImage(id);
+                if (image == null)
+                {
+                    return RedirectToAction("index");
+                }
+                vm.Image = image;
             }
+
+            return View(vm);
+        }
+
+        private bool hasPermissionToView(int id)
+        {
+            var allowedIDs = HttpContext.Session.Get<List<int>>("allowedIDs");
+            if (allowedIDs == null)
+            {
+                return false;
+            }
+            return allowedIDs.Contains(id);
+        }
+
+       [HttpPost]
+       public IActionResult ViewImageSubmit(int id, string password)
+        {
+            var repo = new ImagesRepository(_connectionString);
+            var image = repo.GetImage(id);
+            if (image == null)
+            {
+                return RedirectToAction("Index");
+            }
+
+            if (password != image.Password)
+            {
+                TempData["message"] = "Invalid password";
+            }
+
+            else
+            {
+                var allowedIDs = HttpContext.Session.Get<List<int>>("allowedIDs");
+                if(allowedIDs == null)
+                {
+                    allowedIDs = new List<int>();
+                }
+                allowedIDs.Add(id);
+                HttpContext.Session.Set("allowedIDs", allowedIDs);
+            }
+
+            return Redirect($"/home/viewimage?id={id}");
         }
     }
     public static class SessionExtensionMethods

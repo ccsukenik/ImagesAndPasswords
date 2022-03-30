@@ -4,12 +4,34 @@
 @{
 }
 
-@model ImageViewModel
+@model ViewImageViewModel
 
-<div class="row">
-    <div class="col-md-8 offset-md-2">
-        <img src="/uploads/@Model.Image.FileName" style="width: 800px;" />
-        <br />
-        <h3>Views: @Model.Image.Views</h3>
+@if (!Model.HasPermissionToView)
+{
+    <div class="row">
+        <div class="col-md-6 offset-md-3 jumbotron">
+            <h4>Please enter the password for this image:</h4>
+            @if (!String.IsNullOrEmpty(Model.Message))
+            {
+                <h3 class="alert-danger">@Model.Message</h3>
+            }
+            <form method="post">
+                <input type="hidden" name="id" value="@Model.Image.ID" />
+                <input type="text" class="form-control" placeholder="Password" name="password" />
+                <br />
+                <button class="btn btn-primary">Submit</button>
+            </form>
+        </div>
     </div>
-</div>
+}
+
+else
+{
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <img src="/uploads/@Model.Image.FileName" style="width: 800px;" />
+            <br />
+            <h3>Views: @Model.Image.Views</h3>
+        </div>
+    </div>
+}

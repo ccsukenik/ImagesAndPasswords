@@ -6,9 +6,10 @@ using ImagesAndPasswords.Data;
 
 namespace ImagesAndPasswords.Web.Models
 {
-    public class UploadViewModel
+    public class ViewImageViewModel
     {
-        public string Password { get; set; }
-        public int ID { get; set; }
+        public bool HasPermissionToView { get; set; }
+        public Image Image { get; set; }
+        public string Message { get; set; }
     }
 }

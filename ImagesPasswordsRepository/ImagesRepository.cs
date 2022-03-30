@@ -16,80 +16,48 @@ namespace ImagesAndPasswords.Data
             _connectionString = connectionString;
         }
 
-        public int AddImage(string fileName, string password)
+        public void AddImage(Image image)
         {
             using var connection = new SqlConnection(_connectionString);
             using var command = connection.CreateCommand();
             command.CommandText = @"INSERT INTO Images(FileName, Password, Views)
-VALUES(@name, @password, @views)
-SELECT SCOPE_IDENTITY()";
-            command.Parameters.AddWithValue("@name", fileName);
-            command.Parameters.AddWithValue("@password", password);
-            command.Parameters.AddWithValue("@views", 0);
+VALUES(@fileName, @password, 0) SELECT SCOPE_IDENTITY()";
+            command.Parameters.AddWithValue("@fileName", image.FileName);
+            command.Parameters.AddWithValue("@password", image.Password);
             connection.Open();
-
-            return (int)(decimal)command.ExecuteScalar(); ;
+            image.ID = (int)(decimal)command.ExecuteScalar(); ;
         }
 
         public Image GetImage(int id)
         {
             using var connection = new SqlConnection(_connectionString);
             using var command = connection.CreateCommand();
-            command.CommandText = @"SELECT * FROM Images WHERE ID = @id";
+            command.CommandText = @"SELECT TOP 1 * FROM Images WHERE ID = @id";
             command.Parameters.AddWithValue("@id", id);
             connection.Open();
             var reader = command.ExecuteReader();
             reader.Read();
-
-            var image = new Image
+            if (!reader.Read())
+            {
+                return null;
+            }
+            return new Image
             {
                 ID = (int)reader["ID"],
                 FileName = (string)reader["FileName"],
                 Password = (string)reader["Password"],
                 Views = (int)reader["Views"]
             };
-
-            return image;
         }
 
-        public string GetPassword(int id)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            using var command = connection.CreateCommand();
-            command.CommandText = @"SELECT Password FROM Images WHERE ID = @id";
-            command.Parameters.AddWithValue("@id", id);
-            connection.Open();
-            return (string)command.ExecuteScalar();
-        }
-
-        public Image VerifyPassword(int id, string password)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            using var command = connection.CreateCommand();
-            command.CommandText = @"SELECT * FROM Images WHERE ID = @id AND Password = @password";
-            command.Parameters.AddWithValue("@id", id);
-            command.Parameters.AddWithValue("@password", password);
-            connection.Open();
-            var reader = command.ExecuteReader();
-            reader.Read();
-
-            var image = new Image
-            {
-                ID = (int)reader["ID"],
-                FileName = (string)reader["FileName"],
-                Password = (string)reader["Password"],
-                Views = (int)reader["Views"]
-            };
-
-            return image;
-        }
-
-        public void UpdateView(int id)
+        public void UpdateViews(int id)
         {
             using var connection = new SqlConnection(_connectionString);
             using var command = connection.CreateCommand();
             command.CommandText = @"UPDATE Images SET Views = Views + 1 WHERE ID = @id";
             command.Parameters.AddWithValue("@id", id);
+            connection.Open();
+            command.ExecuteNonQuery();
         }
     }
 }
